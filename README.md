@@ -67,6 +67,7 @@ web/             แอปมือถือ — วางบน GitHub Pages �
 docs/            คู่มือติดตั้งและคู่มือเลือกอุปกรณ์
 test/            ชุดทดสอบ
 tools/           สคริปต์สร้างไอคอน
+.github/         workflow รันชุดทดสอบอัตโนมัติ
 ```
 
 ## ติดตั้ง
@@ -89,12 +90,18 @@ npx http-server web -p 8080
 ## ทดสอบ
 
 ```bash
-npm test              # ตรรกะนำเข้าและตรรกะเทียบผล
-node test/smoke.mjs   # ทดสอบการใช้งานจริงบนเบราว์เซอร์ (ต้องมี playwright)
+npm test                                # ตรรกะนำเข้าและตรรกะเทียบผล (ไม่ต้องติดตั้งอะไร)
+
+npm install --no-save playwright        # เฉพาะครั้งแรก
+npx playwright install chromium
+node test/smoke.mjs                     # การใช้งานจริงบนเบราว์เซอร์
 ```
 
 `test/smoke.mjs` จำลองหน้าจอมือถือขนาด 390×844 เดินตามเส้นทางที่ผู้ตรวจใช้จริง
 ตั้งแต่สแกน แก้สถานะ ผูกแท็ก จนถึงดูรายงาน และตรวจว่าหน้าจอไม่ล้นแนวนอน
+
+ทั้งสองชุดรันอัตโนมัติบน GitHub Actions ทุกครั้งที่เปิดหรืออัปเดต pull request
+และทุกครั้งที่รวมเข้า `main` ดูที่ [`.github/workflows/test.yml`](.github/workflows/test.yml)
 
 ## ข้อควรระวัง
 

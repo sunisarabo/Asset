@@ -1,0 +1,74 @@
+# รันชุดทดสอบอัตโนมัติทุกครั้งที่เปิดหรืออัปเดต pull request และทุกครั้งที่รวมเข้า main
+#
+# แยกเป็นสองงานเพราะให้ผลต่างกัน
+#   ตรรกะ     — ไม่ต้องติดตั้งอะไรเลย รู้ผลในไม่กี่วินาที
+#   เบราว์เซอร์ — ต้องโหลด Chromium จึงช้ากว่ามาก แต่เป็นด่านที่จับข้อบกพร่อง
+#                 ด้านการแสดงผลบนมือถือซึ่งชุดทดสอบตรรกะมองไม่เห็น
+name: ทดสอบ
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# งานทั้งหมดอ่านโค้ดอย่างเดียว ไม่ต้องการสิทธิ์เขียน
+permissions:
+  contents: read
+
+# ถ้ามี push ใหม่เข้ามาระหว่างที่รอบเดิมยังรันอยู่ ให้ยกเลิกรอบเดิมทิ้ง
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  # ตรึงรุ่นไว้ให้ตรงกับที่ใช้พัฒนา เพื่อไม่ให้ผลทดสอบเปลี่ยนตามรุ่นที่ออกใหม่
+  PLAYWRIGHT_VERSION: '1.56.1'
+
+jobs:
+  logic:
+    name: ตรรกะนำเข้าและเทียบผล
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # โปรเจกต์ไม่มี dependency จึงรันได้เลยโดยไม่ต้อง npm install
+      - name: รันชุดทดสอบตรรกะ
+        run: npm test
+
+  browser:
+    name: การใช้งานจริงบนหน้าจอมือถือ
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # เก็บ Chromium ไว้ใช้ซ้ำ ลดเวลารอบถัดไปจากหลักนาทีเหลือหลักวินาที
+      - name: เรียกใช้ Chromium ที่เก็บไว้
+        id: cache-browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
+
+      - name: ติดตั้ง Playwright
+        run: npm install --no-save playwright@${{ env.PLAYWRIGHT_VERSION }}
+
+      - name: ติดตั้ง Chromium
+        if: steps.cache-browser.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      # แคชมีแต่ตัวเบราว์เซอร์ ไลบรารีระบบที่ Chromium ต้องใช้ยังต้องลงทุกรอบ
+      - name: ติดตั้งไลบรารีระบบที่ Chromium ต้องใช้
+        if: steps.cache-browser.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: รันชุดทดสอบบนเบราว์เซอร์
+        run: node test/smoke.mjs
