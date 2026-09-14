@@ -140,6 +140,19 @@ await step('กดแก้สถานะเป็นชำรุดได้',
   if (active !== 'ชำรุด') throw new Error('ชิปที่เลือกคือ ' + active);
 });
 
+await step('ยิงซ้ำหลังแก้เป็นชำรุดแล้ว ต้องไม่ย้อนกลับเป็นสมบูรณ์', async () => {
+  // ต้องรอให้พ้นช่วงกันยิงซ้ำ 2 วินาทีก่อน มิฉะนั้นการสแกนจะถูกคัดออกตั้งแต่ต้น
+  // และไม่ได้เดินผ่านเส้นทางที่หยิบสถานะจากการสแกนครั้งก่อนมาใช้ต่อ
+  await page.waitForTimeout(2200);
+  await page.fill('#manual-input', 'E280116010020012');
+  await page.click('#manual-form button[type=submit]');
+  await page.waitForTimeout(300);
+  const active = (await page.textContent('#amend-status .chip.is-active')).trim();
+  if (active !== 'ชำรุด') throw new Error('สถานะย้อนกลับเป็น ' + active);
+  const badge = await page.locator('#recent-list .badge').first().textContent();
+  if (badge.trim() !== 'ชำรุด') throw new Error('รายการล่าสุดแสดง ' + badge);
+});
+
 await step('แท็กแปลกปลอมเปิดหน้าผูกแท็กให้อัตโนมัติ', async () => {
   await page.fill('#manual-input', 'E2009A7099999999');
   await page.click('#manual-form button[type=submit]');

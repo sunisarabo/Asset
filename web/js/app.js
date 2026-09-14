@@ -119,9 +119,9 @@ async function handleScan({ candidates, source, duplicate }) {
   }
 
   const cfg = getConfig();
-  const already = resolved.asset
-    ? state.scans.find(s => normalizeCode(s.asset_code) === normalizeCode(resolved.asset.asset_code))
-    : null;
+  // ต้องเป็นการสแกน "ครั้งล่าสุด" ของชิ้นนี้ ไม่ใช่ครั้งแรก มิฉะนั้นการกดแก้เป็น
+  // ชำรุดไว้แล้วจะถูกย้อนกลับเป็นสมบูรณ์เงียบ ๆ เมื่อเครื่องอ่านยิงซ้ำ
+  const already = resolved.asset ? findLatestScanOf(resolved.asset.asset_code) : null;
 
   // เครื่อง UHF ยิงแท็กเดิมรัวเป็นสิบครั้งต่อวินาที ถ้าบันทึกทุกครั้งจะได้ขยะ
   // แต่ยังต้องแสดงผลบนจอ เพื่อให้ผู้ตรวจรู้ว่าเครื่องยังอ่านชิ้นนี้อยู่
@@ -186,6 +186,15 @@ async function amendLastScan(patch) {
   renderReportScreen();
   scheduleFlush();
   toast('บันทึกเป็น ' + (patch.status || patch.tag_condition) + ' แล้ว');
+}
+
+/** การสแกนล่าสุดของทรัพย์สินชิ้นหนึ่งในวงรอบปัจจุบัน */
+function findLatestScanOf(assetCode) {
+  const code = normalizeCode(assetCode);
+  for (let i = state.scans.length - 1; i >= 0; i--) {
+    if (normalizeCode(state.scans[i].asset_code) === code) return state.scans[i];
+  }
+  return null;
 }
 
 function recompute() {
@@ -356,6 +365,9 @@ function renderAssetScreen() {
     renderAssetScreen();
   }, v => (v === 'all' ? 'ทั้งหมด' : v));
 
+  // สร้างชุดรหัสที่ผูกแท็กแล้วครั้งเดียว แทนการไล่ค่าในแผนที่ซ้ำทุกแถว
+  const boundCodes = new Set(state.index.tagToCode.values());
+
   const filtered = state.assets.filter(a => {
     if (state.assetFilter !== 'all' && a.location !== state.assetFilter) return false;
     if (!q) return true;
@@ -363,8 +375,7 @@ function renderAssetScreen() {
   }).slice(0, 200);
 
   renderList($('asset-list'), filtered, a => {
-    const bound = [...state.index.tagToCode.values()]
-      .includes(normalizeCode(a.asset_code));
+    const bound = boundCodes.has(normalizeCode(a.asset_code));
     return {
       title: a.name,
       sub: `${a.asset_code} · ${a.location} · ${a.item_type === 'inventory' ? 'สินค้าคงคลัง' : 'ทรัพย์สิน'}`,
