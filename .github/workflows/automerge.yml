@@ -1,0 +1,139 @@
+# รวม pull request เข้า main ให้เองเมื่อชุดทดสอบผ่านครบ
+#
+# ทำไมต้องรอ workflow_run แทนการใช้ auto-merge ของ GitHub ตรง ๆ
+#   auto-merge ของ GitHub จะรอก็ต่อเมื่อ branch protection กำหนด required
+#   check ไว้ ถ้ายังไม่ได้ตั้ง GitHub จะถือว่า pull request พร้อมรวมทันที
+#   แล้วรวมให้ตั้งแต่วินาทีที่เปิด โดยไม่รอผลทดสอบเลย การผูกกับเหตุการณ์
+#   "workflow ทดสอบทำงานจบ" จึงได้พฤติกรรมที่ต้องการโดยไม่ต้องตั้งค่าอะไรเพิ่ม
+#
+# ไม่รวมให้เมื่อ
+#   - pull request ยังเป็นฉบับร่าง (draft)
+#   - มีป้าย "ห้ามรวมอัตโนมัติ" หรือ "do-not-merge"
+#   - มีคนขอแก้ไข (changes requested) ค้างอยู่
+#   - มี check อื่นที่ยังไม่จบหรือไม่ผ่าน
+#   - มี commit ใหม่เข้ามาหลังรอบทดสอบนี้เริ่ม
+#   - เป็น pull request จาก fork
+name: รวมโค้ดอัตโนมัติ
+
+on:
+  workflow_run:
+    workflows: ["ทดสอบ"]
+    types: [completed]
+
+# ต้องเขียนได้ทั้งโค้ดและ pull request จึงจะรวมให้ได้
+# และต้องเปิด Settings → Actions → General → Workflow permissions
+# เป็น "Read and write permissions" ด้วย มิฉะนั้นขั้นตอนนี้จะถูกปฏิเสธ
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    name: รวม pull request ที่ทดสอบผ่านแล้ว
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.payload.workflow_run.head_sha;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            // ชื่อ job ของ workflow นี้เอง ต้องข้ามตอนไล่ดู check ไม่งั้นจะรอตัวเอง
+            const SELF = 'รวม pull request ที่ทดสอบผ่านแล้ว';
+            const BLOCK_LABELS = ['ห้ามรวมอัตโนมัติ', 'do-not-merge', 'wip'];
+
+            const skip = (n, why) => core.info(`ข้าม #${n}: ${why}`);
+
+            // หา pull request ของคอมมิตนี้จากสองทาง แล้วรวมกัน
+            //
+            // ไม่ใช้ listPullRequestsAssociatedWithCommit เพียงอย่างเดียว เพราะ API นั้น
+            // จะคืน pull request ที่ยังเปิดอยู่ก็ต่อเมื่อคอมมิต "ยังไม่อยู่บน branch หลัก"
+            // ถ้าคอมมิตอยู่บน branch หลักแล้ว มันจะมองหา pull request ที่ถูกรวมไปแล้ว
+            // ซึ่งไม่มี จึงคืนค่าว่าง กรณีนี้เกิดจริงเมื่อ branch หลักของ repository
+            // ยังถูกตั้งเป็น branch ที่กำลังพัฒนาอยู่ ทำให้การรวมอัตโนมัติเงียบไปทั้งรอบ
+            const numbers = new Set(
+              (context.payload.workflow_run.pull_requests || []).map(p => p.number)
+            );
+            const open = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'open', per_page: 100
+            });
+            open.filter(p => p.head.sha === sha).forEach(p => numbers.add(p.number));
+
+            if (!numbers.size) return core.info('คอมมิตนี้ไม่ผูกกับ pull request ที่เปิดอยู่');
+
+            for (const number of numbers) {
+
+              // อ่านสถานะสดอีกครั้ง เพราะข้อมูลจาก workflow_run เป็นของตอนที่รอบทดสอบเริ่ม
+              const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: number });
+
+              if (pr.state !== 'open') { skip(number, 'ปิดไปแล้ว'); continue; }
+              if (pr.draft) { skip(number, 'ยังเป็นฉบับร่าง'); continue; }
+              if (pr.head.sha !== sha) { skip(number, 'มีคอมมิตใหม่เข้ามาหลังรอบทดสอบนี้'); continue; }
+              if (pr.head.repo?.full_name !== `${owner}/${repo}`) { skip(number, 'มาจาก fork'); continue; }
+
+              const blocked = pr.labels.map(l => l.name.toLowerCase())
+                .filter(n => BLOCK_LABELS.some(b => b.toLowerCase() === n));
+              if (blocked.length) { skip(number, `มีป้าย ${blocked.join(', ')}`); continue; }
+
+              // มีคนขอแก้ไขค้างอยู่ ต้องรอเจ้าตัวกลับมาอนุมัติก่อน
+              const { data: reviews } = await github.rest.pulls.listReviews({
+                owner, repo, pull_number: number, per_page: 100
+              });
+              const latestByUser = new Map();
+              for (const r of reviews) {
+                if (r.state === 'COMMENTED') continue;
+                latestByUser.set(r.user.login, r.state);
+              }
+              if ([...latestByUser.values()].includes('CHANGES_REQUESTED')) {
+                skip(number, 'มีรีวิวที่ขอให้แก้ไขค้างอยู่');
+                continue;
+              }
+
+              // check ทุกตัวบนคอมมิตนี้ต้องจบและผ่าน ไม่ใช่แค่ workflow ที่เรียกเรามา
+              const { data: checks } = await github.rest.checks.listForRef({
+                owner, repo, ref: sha, per_page: 100
+              });
+              const others = checks.check_runs.filter(c => c.name !== SELF);
+              const pending = others.filter(c => c.status !== 'completed');
+              const failed = others.filter(c =>
+                c.status === 'completed' && !['success', 'neutral', 'skipped'].includes(c.conclusion));
+              if (pending.length) { skip(number, `ยังมี check ที่ไม่จบ: ${pending.map(c => c.name).join(', ')}`); continue; }
+              if (failed.length) { skip(number, `มี check ที่ไม่ผ่าน: ${failed.map(c => c.name).join(', ')}`); continue; }
+
+              const { data: status } = await github.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha });
+              if (status.total_count > 0 && status.state !== 'success') {
+                skip(number, `commit status เป็น ${status.state}`);
+                continue;
+              }
+
+              // GitHub คำนวณ mergeable แบบ asynchronous ครั้งแรกจึงมักได้ null
+              let mergeable = pr.mergeable;
+              for (let i = 0; mergeable === null && i < 5; i++) {
+                await new Promise(r => setTimeout(r, 3000));
+                const again = await github.rest.pulls.get({ owner, repo, pull_number: number });
+                mergeable = again.data.mergeable;
+              }
+              if (mergeable === false) { skip(number, 'รวมไม่ได้ อาจมี conflict'); continue; }
+              if (mergeable === null) { skip(number, 'GitHub ยังคำนวณสถานะการรวมไม่เสร็จ'); continue; }
+
+              try {
+                await github.rest.pulls.merge({
+                  owner, repo, pull_number: number,
+                  merge_method: 'merge',
+                  sha,
+                  commit_title: `${pr.title} (#${number})`
+                });
+                core.info(`รวม #${number} เข้า ${pr.base.ref} แล้ว`);
+              } catch (err) {
+                // 405 = GitHub ปฏิเสธการรวม, 409 = มีคอมมิตใหม่แทรกเข้ามาพอดี
+                // ทั้งสองกรณีไม่ใช่ความผิดพลาดของ workflow จึงบันทึกไว้เฉย ๆ
+                if (err.status === 405 || err.status === 409) {
+                  core.warning(`รวม #${number} ไม่สำเร็จ (${err.status}): ${err.message}`);
+                } else {
+                  throw err;
+                }
+              }
+            }
