@@ -47,13 +47,24 @@ jobs:
 
             const skip = (n, why) => core.info(`ข้าม #${n}: ${why}`);
 
-            const associated = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-              owner, repo, commit_sha: sha
+            // หา pull request ของคอมมิตนี้จากสองทาง แล้วรวมกัน
+            //
+            // ไม่ใช้ listPullRequestsAssociatedWithCommit เพียงอย่างเดียว เพราะ API นั้น
+            // จะคืน pull request ที่ยังเปิดอยู่ก็ต่อเมื่อคอมมิต "ยังไม่อยู่บน branch หลัก"
+            // ถ้าคอมมิตอยู่บน branch หลักแล้ว มันจะมองหา pull request ที่ถูกรวมไปแล้ว
+            // ซึ่งไม่มี จึงคืนค่าว่าง กรณีนี้เกิดจริงเมื่อ branch หลักของ repository
+            // ยังถูกตั้งเป็น branch ที่กำลังพัฒนาอยู่ ทำให้การรวมอัตโนมัติเงียบไปทั้งรอบ
+            const numbers = new Set(
+              (context.payload.workflow_run.pull_requests || []).map(p => p.number)
+            );
+            const open = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'open', per_page: 100
             });
-            if (!associated.data.length) return core.info('คอมมิตนี้ไม่ผูกกับ pull request ใด');
+            open.filter(p => p.head.sha === sha).forEach(p => numbers.add(p.number));
 
-            for (const ref of associated.data) {
-              const number = ref.number;
+            if (!numbers.size) return core.info('คอมมิตนี้ไม่ผูกกับ pull request ที่เปิดอยู่');
+
+            for (const number of numbers) {
 
               // อ่านสถานะสดอีกครั้ง เพราะข้อมูลจาก workflow_run เป็นของตอนที่รอบทดสอบเริ่ม
               const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: number });
