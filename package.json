@@ -1,0 +1,10 @@
+{
+  "name": "asset-rfid-audit",
+  "version": "1.0.0",
+  "description": "ระบบตรวจนับทรัพย์สินด้วยแท็ก RFID ผ่านมือถือ",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node test/import.test.cjs && node test/reconcile.test.js"
+  }
+}

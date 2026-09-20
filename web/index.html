@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>ตรวจนับทรัพย์สิน RFID</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-main">
+    <div class="round-name" id="round-name">ยังไม่ได้เลือกวงรอบ</div>
+    <div class="round-sub" id="round-sub">—</div>
+  </div>
+  <button class="sync-chip" id="sync-chip" type="button" aria-live="polite">
+    <span class="dot" id="sync-dot"></span><span id="sync-text">ออฟไลน์</span>
+  </button>
+</header>
+
+<main id="main">
+
+  <!-- ---------- สแกน ---------- -->
+  <section class="screen" id="screen-scan" data-screen="scan">
+    <div class="result-card" id="result-card">
+      <div class="result-icon" id="result-icon">📡</div>
+      <div class="result-body">
+        <div class="result-title" id="result-title">พร้อมสแกน</div>
+        <div class="result-detail" id="result-detail">เลือกวิธีอ่านแท็กด้านล่าง แล้วเริ่มสแกนได้เลย</div>
+        <div class="result-meta" id="result-meta"></div>
+      </div>
+    </div>
+
+    <div class="amend" id="amend" hidden>
+      <div class="amend-label">แก้สถานะรายการล่าสุด</div>
+      <div class="chips" id="amend-status"></div>
+      <div class="amend-label">ความสมบูรณ์ของ TAG</div>
+      <div class="chips" id="amend-tag"></div>
+    </div>
+
+    <div class="stats" id="stats">
+      <button class="stat" data-goto="found"><b id="stat-found">0</b><span>พบแล้ว</span></button>
+      <button class="stat" data-goto="missing"><b id="stat-missing">0</b><span>ยังไม่พบ</span></button>
+      <button class="stat" data-goto="misplaced"><b id="stat-misplaced">0</b><span>ผิดที่</span></button>
+      <button class="stat" data-goto="unknown"><b id="stat-unknown">0</b><span>ไม่รู้จัก</span></button>
+    </div>
+    <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+    <div class="progress-text" id="progress-text">0 / 0</div>
+
+    <div class="source-row">
+      <div class="chips" id="source-chips"></div>
+      <div class="source-status" id="source-status">ยังไม่เริ่มสแกน</div>
+    </div>
+
+    <video id="camera-view" playsinline muted hidden></video>
+
+    <form class="manual-form" id="manual-form">
+      <input id="manual-input" type="text" inputmode="text" autocomplete="off"
+             placeholder="พิมพ์รหัสทรัพย์สินหรือรหัสแท็ก" aria-label="ป้อนรหัสด้วยตนเอง">
+      <button type="submit" class="btn">บันทึก</button>
+    </form>
+    <button class="btn btn-ghost btn-block" id="demo-scan" hidden>สุ่มแท็กสาธิต</button>
+
+    <h2 class="section-title">สแกนล่าสุด</h2>
+    <ul class="list" id="recent-list"></ul>
+  </section>
+
+  <!-- ---------- ผลตรวจ ---------- -->
+  <section class="screen" id="screen-report" data-screen="report" hidden>
+    <div class="summary-grid" id="summary-grid"></div>
+
+    <h2 class="section-title">ความคืบหน้าตามสถานที่</h2>
+    <ul class="list" id="location-list"></ul>
+
+    <div class="tabs" id="report-tabs">
+      <button class="tab is-active" data-tab="missing">ยังไม่พบ</button>
+      <button class="tab" data-tab="found">พบแล้ว</button>
+      <button class="tab" data-tab="misplaced">ผิดที่</button>
+      <button class="tab" data-tab="unknown">ไม่รู้จัก</button>
+    </div>
+    <ul class="list" id="report-list"></ul>
+
+    <div class="actions">
+      <button class="btn btn-ghost" id="export-csv">ดาวน์โหลด CSV</button>
+      <button class="btn btn-ghost" id="copy-summary">คัดลอกสรุป</button>
+    </div>
+  </section>
+
+  <!-- ---------- ทะเบียน ---------- -->
+  <section class="screen" id="screen-assets" data-screen="assets" hidden>
+    <input class="search" id="asset-search" type="search" placeholder="ค้นหาชื่อ รหัส หรือสถานที่" aria-label="ค้นหาทะเบียน">
+    <div class="chips" id="asset-filters"></div>
+    <ul class="list" id="asset-list"></ul>
+  </section>
+
+  <!-- ---------- ตั้งค่า ---------- -->
+  <section class="screen" id="screen-settings" data-screen="settings" hidden>
+    <h2 class="section-title">ผู้ตรวจและพื้นที่</h2>
+    <label class="field"><span>ชื่อผู้ตรวจ</span><input id="cfg-inspector" type="text" autocomplete="name"></label>
+    <label class="field"><span>สถานที่ที่กำลังตรวจ</span><input id="cfg-location" type="text" list="location-options"></label>
+    <datalist id="location-options"></datalist>
+    <label class="field"><span>ชื่อเครื่อง</span><input id="cfg-device" type="text"></label>
+
+    <h2 class="section-title">วงรอบตรวจนับ</h2>
+    <label class="field"><span>วงรอบที่ใช้อยู่</span><select id="cfg-round"></select></label>
+    <button class="btn btn-ghost btn-block" id="new-round">เปิดวงรอบใหม่ประจำเดือนนี้</button>
+
+    <h2 class="section-title">เซิร์ฟเวอร์</h2>
+    <label class="field"><span>ที่อยู่ Apps Script (ลงท้ายด้วย /exec)</span>
+      <input id="cfg-endpoint" type="url" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec"></label>
+    <label class="field"><span>รหัสเข้าใช้งาน</span><input id="cfg-key" type="password" autocomplete="off"></label>
+    <label class="switch"><input id="cfg-demo" type="checkbox"><span>โหมดสาธิต (ไม่ต่อเซิร์ฟเวอร์)</span></label>
+
+    <h2 class="section-title">การแจ้งเตือน</h2>
+    <label class="switch"><input id="cfg-beep" type="checkbox"><span>เสียงเตือนเมื่อสแกนสำเร็จ</span></label>
+    <label class="switch"><input id="cfg-vibrate" type="checkbox"><span>สั่นเมื่อสแกนสำเร็จ</span></label>
+
+    <div class="actions">
+      <button class="btn" id="sync-now">ซิงก์ข้อมูลเดี๋ยวนี้</button>
+      <button class="btn btn-ghost" id="test-connection">ทดสอบการเชื่อมต่อ</button>
+    </div>
+    <p class="hint" id="storage-hint"></p>
+  </section>
+
+</main>
+
+<nav class="tabbar">
+  <button class="tabbar-btn is-active" data-screen="scan"><span>📡</span>สแกน</button>
+  <button class="tabbar-btn" data-screen="report"><span>📋</span>ผลตรวจ</button>
+  <button class="tabbar-btn" data-screen="assets"><span>🗂️</span>ทะเบียน</button>
+  <button class="tabbar-btn" data-screen="settings"><span>⚙️</span>ตั้งค่า</button>
+</nav>
+
+<!-- กล่องผูกแท็กกับทรัพย์สิน เปิดเมื่อสแกนเจอแท็กที่ยังไม่มีในทะเบียน -->
+<dialog id="bind-dialog">
+  <form method="dialog" class="dialog-body">
+    <h3>ผูกแท็กกับทรัพย์สิน</h3>
+    <p class="dialog-tag">แท็ก <code id="bind-tag"></code></p>
+    <input class="search" id="bind-search" type="search" placeholder="ค้นหารหัสหรือชื่อทรัพย์สิน" aria-label="ค้นหาทรัพย์สินเพื่อผูกแท็ก">
+    <ul class="list list-compact" id="bind-results"></ul>
+    <div class="actions">
+      <button class="btn btn-ghost" value="cancel">ปิด</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

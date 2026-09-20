@@ -1,0 +1,405 @@
+/*
+ * styles.css — ออกแบบให้ใช้งานด้วยมือเดียวขณะยืนตรวจ
+ *
+ * ข้อจำกัดหน้างานที่มีผลต่อการออกแบบ
+ *   - ผู้ตรวจถือเครื่องอ่านอีกมือ จึงต้องกดได้ด้วยนิ้วโป้งข้างเดียว
+ *   - บางพื้นที่เป็นลานจอดและห้องเก็บของ แสงจ้าหรือมืดสลับกัน จึงต้องคอนทราสต์สูง
+ *   - ไม่โหลดฟอนต์จากเน็ต เพราะต้องเปิดใช้ได้ตอนออฟไลน์
+ */
+
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #eef0f3;
+  --text: #14181f;
+  --text-dim: #5b6472;
+  --line: #d8dce3;
+  --brand: #0f766e;
+  --brand-ink: #ffffff;
+  --ok: #15803d;
+  --ok-bg: #dcfce7;
+  --warn: #b45309;
+  --warn-bg: #fef3c7;
+  --danger: #b91c1c;
+  --danger-bg: #fee2e2;
+  --info: #1d4ed8;
+  --info-bg: #dbeafe;
+  --radius: 14px;
+  --tabbar-h: 62px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116;
+    --surface: #171c24;
+    --surface-2: #212832;
+    --text: #eef1f6;
+    --text-dim: #9aa4b2;
+    --line: #2c3340;
+    --brand: #2dd4bf;
+    --brand-ink: #06231f;
+    --ok: #4ade80;
+    --ok-bg: #10331f;
+    --warn: #fbbf24;
+    --warn-bg: #3a2c08;
+    --danger: #f87171;
+    --danger-bg: #3d1414;
+    --info: #93c5fd;
+    --info-bg: #142544;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Noto Sans Thai", "Sarabun", "Leelawadee UI", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ---------- แถบบน ---------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+.topbar-main { min-width: 0; flex: 1; }
+.round-name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.round-sub { font-size: 12px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.sync-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .18);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.sync-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #9aa4b2; }
+.sync-chip.is-online .dot { background: #4ade80; }
+.sync-chip.is-pending .dot { background: #fbbf24; }
+
+/* ---------- โครงหน้าจอ ---------- */
+
+main { padding: 14px 16px 24px; }
+.screen[hidden] { display: none; }
+
+.section-title {
+  margin: 22px 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--text-dim);
+  text-transform: none;
+}
+
+/* ---------- การ์ดผลสแกน ---------- */
+
+.result-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  min-height: 116px;
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 2px solid var(--line);
+  background: var(--surface);
+  transition: background .15s, border-color .15s;
+}
+.result-card.is-found { border-color: var(--ok); background: var(--ok-bg); }
+.result-card.is-misplaced { border-color: var(--warn); background: var(--warn-bg); }
+.result-card.is-unknown { border-color: var(--info); background: var(--info-bg); }
+.result-card.is-duplicate { border-color: var(--text-dim); background: var(--surface-2); }
+
+.result-icon { font-size: 34px; line-height: 1; flex-shrink: 0; }
+.result-body { min-width: 0; flex: 1; }
+.result-title { font-size: 20px; font-weight: 700; line-height: 1.25; }
+.result-detail { margin-top: 4px; font-size: 14px; word-break: break-word; }
+.result-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere; /* รหัส EPC เป็นสายอักขระยาวที่ไม่มีจุดตัดบรรทัด */
+}
+
+/* ---------- ปุ่มแก้สถานะรายการล่าสุด ---------- */
+
+.amend {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.amend-label { font-size: 12px; color: var(--text-dim); margin: 6px 0 6px; }
+.amend-label:first-child { margin-top: 0; }
+
+/*
+ * สถานะมีถึงเจ็ดแบบ ถ้าปล่อยให้ตัดขึ้นบรรทัดใหม่จะสูงสี่แถว
+ * ดันการ์ดผลสแกนหลุดออกนอกจอจนผู้ตรวจต้องเลื่อนหาทุกครั้ง
+ * จึงบีบให้เหลือแถวเดียวแล้วเลื่อนแนวนอนแทน โดยเรียงตัวที่ใช้บ่อยไว้ซ้ายสุด
+ */
+.amend .chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+.amend .chip { flex-shrink: 0; scroll-snap-align: start; }
+
+/* ---------- ชิป ---------- */
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 9px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.chip.is-active { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); font-weight: 600; }
+.chip:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ---------- ตัวเลขสรุป ---------- */
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 4px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.stat b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 11px; color: var(--text-dim); }
+
+.progress { height: 8px; margin-top: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.progress-bar { height: 100%; width: 0; background: var(--brand); transition: width .25s; }
+.progress-text { margin-top: 5px; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+/* ---------- แหล่งสัญญาณ ---------- */
+
+.source-row { margin-top: 16px; }
+.source-status { margin-top: 8px; font-size: 13px; color: var(--text-dim); }
+
+#camera-view {
+  width: 100%;
+  max-height: 46vh;
+  margin-top: 12px;
+  border-radius: var(--radius);
+  background: #000;
+  object-fit: cover;
+}
+#camera-view[hidden] { display: none; }
+
+/* ---------- ฟอร์ม ---------- */
+
+.manual-form { display: flex; gap: 8px; margin-top: 14px; }
+.manual-form input { flex: 1; min-width: 0; }
+
+input[type="text"], input[type="url"], input[type="password"], input[type="search"], select {
+  width: 100%;
+  padding: 12px 13px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px; /* ต่ำกว่า 16px จะทำให้ iOS ซูมหน้าจอตอนโฟกัส */
+}
+input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.field { display: block; margin-bottom: 12px; }
+.field > span { display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-dim); }
+
+.switch { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 15px; }
+.switch input { width: 22px; height: 22px; accent-color: var(--brand); }
+
+.search { margin-bottom: 12px; }
+
+.btn {
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-ghost { background: var(--surface); color: var(--text); border: 1px solid var(--line); }
+.btn-block { display: block; width: 100%; margin-top: 10px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.actions .btn { flex: 1; min-width: 140px; }
+
+/* ---------- รายการ ---------- */
+
+/*
+ * grid item มีค่า min-width เริ่มต้นเป็น auto ซึ่งแปลว่าห้ามหดต่ำกว่าความกว้าง
+ * ของเนื้อหาที่ตัดบรรทัดไม่ได้ ชื่อทรัพย์สินในทะเบียนยาวมากและตั้ง nowrap ไว้
+ * ถ้าไม่บังคับ minmax(0, 1fr) และ min-width: 0 รายการเดียวจะดันทั้งหน้าให้กว้าง
+ * จนแถบปุ่มด้านล่างหลุดออกนอกจอบนมือถือ
+ */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.list > li { min-width: 0; }
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.list-compact .list-item { padding: 10px 12px; }
+.list-item { max-width: 100%; }
+.list-main { min-width: 0; flex: 1; }
+.list-title { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-sub { font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-side { flex-shrink: 0; font-size: 12px; text-align: end; font-variant-numeric: tabular-nums; }
+
+.badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.badge-ok { background: var(--ok-bg); color: var(--ok); }
+.badge-warn { background: var(--warn-bg); color: var(--warn); }
+.badge-danger { background: var(--danger-bg); color: var(--danger); }
+.badge-info { background: var(--info-bg); color: var(--info); }
+.badge-mute { background: var(--surface-2); color: var(--text-dim); }
+
+.empty { padding: 22px 14px; text-align: center; color: var(--text-dim); font-size: 14px; }
+
+/* ---------- สรุปผลตรวจ ---------- */
+
+.summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.summary-card { padding: 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); }
+.summary-card b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; }
+.summary-card span { font-size: 12px; color: var(--text-dim); }
+
+.tabs { display: flex; gap: 6px; margin: 18px 0 10px; overflow-x: auto; padding-bottom: 2px; }
+.tab {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.tab.is-active { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); font-weight: 600; }
+
+/* ---------- แถบล่าง ---------- */
+
+.tabbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+.tabbar-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.tabbar-btn span { font-size: 20px; line-height: 1; }
+.tabbar-btn.is-active { color: var(--brand); font-weight: 600; }
+
+/* ---------- กล่องโต้ตอบและแจ้งเตือน ---------- */
+
+dialog {
+  width: min(560px, 92vw);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+}
+dialog::backdrop { background: rgba(0, 0, 0, .55); }
+.dialog-body { padding: 18px; }
+.dialog-body h3 { margin: 0 0 8px; font-size: 17px; }
+.dialog-tag { margin: 0 0 12px; font-size: 13px; color: var(--text-dim); }
+.dialog-tag code { font-size: 13px; word-break: break-all; }
+#bind-results { max-height: 46vh; overflow-y: auto; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tabbar-h) + 18px + env(safe-area-inset-bottom));
+  z-index: 40;
+  max-width: 88vw;
+  padding: 12px 18px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 14px;
+  text-align: center;
+}
+.toast[hidden] { display: none; }
+
+.hint { margin-top: 14px; font-size: 12px; color: var(--text-dim); }
+
+@media (min-width: 620px) {
+  main { max-width: 720px; margin: 0 auto; }
+  .summary-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
