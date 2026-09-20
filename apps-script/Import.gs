@@ -185,6 +185,15 @@ function onOpen() {
     .createMenu('ตรวจนับทรัพย์สิน')
     .addItem('นำเข้าทะเบียนจากชีตต้นทาง', 'importFromSourceSheet')
     .addItem('สร้างชีตระบบให้ครบ', 'setupSheets')
+    .addSeparator()
+    .addSubMenu(SpreadsheetApp.getUi().createMenu('งานอัตโนมัติ')
+      .addItem('ตั้งให้ทำงานเอง', 'installAutomation')
+      .addItem('ดูสถานะ', 'showAutomationStatus')
+      .addItem('หยุดทำงานเอง', 'removeAutomation')
+      .addSeparator()
+      .addItem('เปิดวงรอบเดือนนี้เดี๋ยวนี้', 'autoOpenRound')
+      .addItem('ส่งสรุปความคืบหน้าเดี๋ยวนี้', 'autoDailyDigest')
+      .addItem('ปิดวงรอบที่ถึงกำหนดเดี๋ยวนี้', 'autoCloseRound'))
     .addToUi();
 }
 

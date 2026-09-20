@@ -261,7 +261,10 @@ function buildReport_(roundId) {
   var scans = readAll_(SHEETS.SCANS).filter(function (s) {
     return s.round_id === roundId;
   });
-  return reconcile_(round, readAll_(SHEETS.ASSETS), readAll_(SHEETS.TAGS), scans);
+  var report = reconcile_(round, readAll_(SHEETS.ASSETS), readAll_(SHEETS.TAGS), scans);
+  // ประทับเวลาไว้ให้รายงานที่บันทึกลงชีตบอกได้ว่าเป็นข้อมูล ณ ตอนไหน
+  report.generated_at = nowIso_();
+  return report;
 }
 
 function distinctLocations_() {
