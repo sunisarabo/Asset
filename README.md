@@ -65,6 +65,8 @@ web/             แอปมือถือ — วางบน GitHub Pages �
     config.js        ค่าตั้งประจำเครื่อง
     demo.js          ข้อมูลจำลองสำหรับโหมดสาธิต
 
+doc-numbering/   ระบบรันเลขหนังสือบน Excel (Office Scripts) — ดู doc-numbering/README.md
+
 docs/            คู่มือติดตั้งและคู่มือเลือกอุปกรณ์
 test/            ชุดทดสอบ
 tools/           สคริปต์สร้างไอคอน
@@ -123,7 +125,7 @@ npx http-server web -p 8080
 ## ทดสอบ
 
 ```bash
-npm test                                # ตรรกะนำเข้า เทียบผล และงานอัตโนมัติ (ไม่ต้องติดตั้งอะไร)
+npm test                                # ตรรกะนำเข้า เทียบผล งานอัตโนมัติ และระบบรันเลขหนังสือ (ไม่ต้องติดตั้งอะไร)
 
 npm install --no-save playwright        # เฉพาะครั้งแรก
 npx playwright install chromium

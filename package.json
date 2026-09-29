@@ -5,6 +5,6 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "node test/import.test.cjs && node test/reconcile.test.js && node test/automation.test.cjs"
+    "test": "node test/import.test.cjs && node test/reconcile.test.js && node test/automation.test.cjs && node test/doc-numbering.test.cjs"
   }
 }
