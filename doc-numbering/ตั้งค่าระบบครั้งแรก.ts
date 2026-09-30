@@ -238,24 +238,32 @@ function fixSerial(serial: number): number {
 function reportDuplicates(workbook: ExcelScript.Workbook, report: string[]) {
   const year = new Date(Date.now() + 7 * 3600 * 1000).getUTCFullYear() + 543;
   for (const sheet of workbook.getWorksheets()) {
-    const name = sheet.getName();
-    if (/\d{4}\s*$/.test(name) || bareName(name) === bareName(MASTER)) continue;
-    const used = sheet.getUsedRange(true);
-    if (!used) continue;
-    const values = sheet.getRangeByIndexes(0, 0, used.getRowIndex() + used.getRowCount(),
-      used.getColumnIndex() + used.getColumnCount()).getValues();
-    const headerRow = values.findIndex((r, i) => i < 10 && String(r[0]).trim() === 'ลำดับ');
-    if (headerRow < 0) continue;
-    const col = values[headerRow].findIndex(h => String(h).trim() === 'เลขที่หนังสือ' || String(h).trim() === 'เลขรับ');
-    if (col < 0) continue;
-    const seen: { [n: string]: number } = {};
-    for (const r of values.slice(headerRow + 1)) {
-      const n = String(r[col]).replace(/\s+/g, '');
-      if (n && n.indexOf(String(year)) >= 0) seen[n] = (seen[n] || 0) + 1;
-    }
-    const dups = Object.keys(seen).filter(n => seen[n] > 1);
-    if (dups.length) report.push(`⚠️ ${name}: เลขซ้ำ ${dups.map(n => `${n} (${seen[n]} แถว)`).join(', ')}`);
+    const line = duplicatesIn(sheet, year);
+    if (line) report.push(line);
   }
+}
+
+// อ่านชีตเดียวแล้วคืนข้อความเลขซ้ำของปีนี้ แยกเป็นฟังก์ชันเพราะตัวตรวจของ
+// Office Scripts เตือนเมื่อเรียกเมธอดอ่านค่าตรง ๆ ในลูป
+function duplicatesIn(sheet: ExcelScript.Worksheet, year: number): string | undefined {
+  const name = sheet.getName();
+  if (/\d{4}\s*$/.test(name) || bareName(name) === bareName(MASTER)) return undefined;
+  const used = sheet.getUsedRange(true);
+  if (!used) return undefined;
+  const values = sheet.getRangeByIndexes(0, 0, used.getRowIndex() + used.getRowCount(),
+    used.getColumnIndex() + used.getColumnCount()).getValues();
+  const headerRow = values.findIndex((r, i) => i < 10 && String(r[0]).trim() === 'ลำดับ');
+  if (headerRow < 0) return undefined;
+  const col = values[headerRow].findIndex(h => String(h).trim() === 'เลขที่หนังสือ' || String(h).trim() === 'เลขรับ');
+  if (col < 0) return undefined;
+  const seen: { [n: string]: number } = {};
+  for (const r of values.slice(headerRow + 1)) {
+    const n = String(r[col]).replace(/\s+/g, '');
+    if (n && n.indexOf(String(year)) >= 0) seen[n] = (seen[n] || 0) + 1;
+  }
+  const dups = Object.keys(seen).filter(n => seen[n] > 1);
+  if (!dups.length) return undefined;
+  return `⚠️ ${name}: เลขซ้ำ ${dups.map(n => `${n} (${seen[n]} แถว)`).join(', ')}`;
 }
 
 // ---------- ชีต ----------
