@@ -402,5 +402,5 @@ function findSheet(workbook: ExcelScript.Workbook, name: string): ExcelScript.Wo
 }
 
 function bareName(name: string): string {
-  return name.replace(/^[^฀-๿A-Za-z0-9]+/, '').replace(/\s+/g, ' ').trim();
+  return name.replace(/^[^\u0E00-\u0E7FA-Za-z0-9]+/, '').replace(/\s+/g, ' ').trim();
 }
