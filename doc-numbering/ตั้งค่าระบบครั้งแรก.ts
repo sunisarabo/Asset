@@ -86,9 +86,6 @@ function setupHome(workbook: ExcelScript.Workbook, report: string[]) {
         home.getCell(start + i * 2, 1).setValue(f[0]);
         home.getCell(start + i * 2, 3).setValue(f[1]);
       });
-      const result = home.getCell(start + (NEW_FIELDS.length - 1) * 2, 2);
-      result.getFormat().getFont().setBold(true);
-      result.getFormat().getFont().setSize(16);
       report.push('เพิ่มช่องรหัสพนักงาน/เลขต้นทาง วันที่ในหนังสือ หมายเหตุ และเลขที่ได้ ในหน้าหลักแล้ว');
       area = home.getRange('B1:B60').getValues().map(r => String(r[0]).trim());
     }
@@ -100,6 +97,8 @@ function setupHome(workbook: ExcelScript.Workbook, report: string[]) {
     home.getCell(hint, 1).setValue('▶  กดปุ่ม "เพิ่มหนังสือใหม่" (หรือ Automate → เพิ่มหนังสือใหม่ → Run) เพื่อออกเลข');
   }
 
+  styleNewFields(home, area);
+
   setList(home, rowOf('แผนก'), DEPT_CHOICES);
   setList(home, rowOf('ประเภทหนังสือ'), TYPE_CHOICES);
   const admin = findSheet(workbook, ADMIN);
@@ -107,6 +106,26 @@ function setupHome(workbook: ExcelScript.Workbook, report: string[]) {
 
   const docDate = rowOf('วันที่ในหนังสือ');
   if (docDate >= 0) home.getCell(docDate, 2).setNumberFormat(DATE_FORMAT);
+}
+
+// ให้ช่องใหม่หน้าตาเหมือนช่อง "เรื่อง" (กรอบ สีพื้น ความสูงแถว) ทำทุกครั้งที่รัน
+// ไฟล์ที่รันสคริปต์รุ่นก่อนไปแล้วจึงได้รูปแบบนี้ด้วยเมื่อรันซ้ำ
+function styleNewFields(home: ExcelScript.Worksheet, area: string[]) {
+  const source = area.findIndex(v => v.startsWith('เรื่อง'));
+  if (source < 0) return;
+  const height = home.getCell(source, 1).getFormat().getRowHeight();
+  for (const f of NEW_FIELDS) {
+    const row = area.findIndex(v => v.startsWith(f[0]));
+    if (row < 0) continue;
+    home.getRangeByIndexes(row, 1, 1, 2).copyFrom(home.getRangeByIndexes(source, 1, 1, 2), ExcelScript.RangeCopyType.formats);
+    home.getCell(row, 1).getFormat().setRowHeight(height);
+  }
+  const result = area.findIndex(v => v.startsWith('✅ เลขที่ได้'));
+  if (result >= 0) {
+    const font = home.getCell(result, 2).getFormat().getFont();
+    font.setBold(true);
+    font.setSize(14);
+  }
 }
 
 function setList(sheet: ExcelScript.Worksheet, row: number, source: string) {

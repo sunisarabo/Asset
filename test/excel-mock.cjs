@@ -16,6 +16,7 @@ const MAX_COL = 16384;
 const ExcelScript = {
   InsertShiftDirection: { down: 'Down', right: 'Right' },
   DeleteShiftDirection: { up: 'Up', left: 'Left' },
+  RangeCopyType: { all: 'All', formats: 'Formats', values: 'Values', formulas: 'Formulas' },
 };
 
 function colIndex(letters) {
@@ -118,6 +119,8 @@ class Range {
   insert() { this.sheet.shiftRows(this.r, this.nr); return this; }
   delete() { this.sheet.shiftRows(this.r, -this.nr); }
   getFormat() { return formatStub(); }
+  // คัดลอกรูปแบบ — จำไว้ให้ชุดทดสอบตรวจว่าช่องไหนได้รูปแบบจากช่องไหน
+  copyFrom(source, type) { (this.sheet.copies = this.sheet.copies || []).push({ to: [this.r, this.c], from: [source.r, source.c], type }); }
   getDataValidation() {
     const key = `${this.r},${this.c}`;
     const v = this.sheet.validations;
